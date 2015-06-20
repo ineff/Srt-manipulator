@@ -1,11 +1,19 @@
 module Parsers where
 
 import Data.Char8 (isNumber)
+import Text.Regex.Posix ((=~))
+import Data.List
 
 -- Auxiliary function to read times
 -- remind that ReadS a = String -> [(a,String)]
 
--- An hour is a pair of chiper followed by a colon (:)
+newLine :: String
+newLine = "\r\n"
+
+endSub :: String
+endSub = newLine++newLine
+
+-- An hour is a pair of digit followed by a colon (:)
 getHours :: ReadS Integer
 getHours (x0:x1:':':rest) =
   if (isNumber x0) && (isNumber x1)
@@ -16,7 +24,7 @@ getHours (x0:x1:':':rest) =
 -- A minute is written similarly to an hour
 getMinutes = getHours
 
--- seconds are pair of chiphers followed by a comma (,)
+-- seconds are pair of digits followed by a comma (,)
 getSeconds :: ReadS Integer
 getSeconds (x0:x1:rest) =
   if (isNumber x0) && (isNumber x1) 
@@ -31,11 +39,11 @@ getSeconds (x0:x1:rest) =
         
 -- Milliseconds is expressed by 4 ciphers
 getMilliSeconds :: ReadS Integer
-getMilliSeconds (m0:m1:m2:m3:rest) =
-  if all isNumber [m0,m1,m2,m3]
-  then [(c3+c2*10+c1*100+c0*1000,rest)]
+getMilliSeconds (m0:m1:m2:rest) =
+  if all isNumber [m0,m1,m2]
+  then [(c2*10+c1*100+c0*100,rest)]
   else []
-  where [c3,c2,c1,c0] = map read [m3:[],m2:[],m1:[],m0:[]]
+  where [c2,c1,c0] = map read [m2:[],m1:[],m0:[]]
 
 getTime :: ReadS Integer
 getTime string =
@@ -43,13 +51,16 @@ getTime string =
   \(h,rest) -> getMinutes rest >>=
                \(m,rest) -> getSeconds rest >>=
                             \(s,rest) -> getMilliSeconds rest >>=
-                                         \(c,rest) -> [(c+10^4*s+10^4*60*m+10^4*3600*h,rest)]
+                                         \(c,rest) -> [(c+10^3*s+10^3*60*m+10^3*3600*h,rest)]
                                                       
 -- Try to see if the string start with a newline
 -- if that's the case it drops the newline, otherwise fails
 getNewline :: ReadS ()
-getNewline ('\r':'\n':rest) = [((),rest)]
-getNewline _ = []
+getNewline string =
+  if newLine `isPrefixOf` string
+  then [((),drop (length newLine) string)]
+  else []
+  
 
 -- Match the separator " --> " for time specification
 -- if it is present it simply drops it, otherwise fails
@@ -63,5 +74,12 @@ getTimeSep string =
 
 -- parse every string
 getSubsLines :: ReadS String
-getSubsLines string = [(string,"")] 
+getSubsLines string =
+  let (subs,_,rest) = string =~ endSub :: (String,String,String)
+  in
+   case subs of
+     "" -> []
+     _  -> [(subs,rest)]
+
+
   

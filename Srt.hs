@@ -1,35 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Srt where
+module Srt (Srt) where
 
-import qualified Data.ByteString.Char8 as BS -- to use ByteStrings and avoid problem with char-encoding
 import Parsers 
+import Printer
 
 data Srt = Srt {
-  sub :: BS.ByteString,
+  sub :: String,
   index :: Integer,
   start :: Integer,
   end :: Integer
   } deriving(Eq)
 
-showT :: Integer -> String
-showT = reverse . (take 2). reverse .('0':) . show
 
-showM :: Integer -> String
-showM number =
-  let num = show number
-  in
-   ['0'| x <- [(length num)..3]]++num
-  
-showTime :: Integer -> String
-showTime time =
-  let millisec = time `mod` 10000
-      seconds = time `div` 10000
-      minutes = seconds `div` 60
-      hours = minutes `div` 60
-  in
-   (showT hours)++":"++(showT $ minutes - hours*60)++":"++(showT $ seconds - minutes*60)++","++(showM millisec)
-   
+
+
+
+-- Instance of the Read typeclass for Srt
 instance Read Srt where
   readsPrec _ string = do
     (index,rest) <- (readsPrec 0 :: ReadS Integer) string
@@ -39,17 +26,30 @@ instance Read Srt where
     (end,rest) <- getTime rest
     (_,rest) <- getNewline rest
     (subString,rest) <- getSubsLines rest
-    (_,rest) <- getNewline rest
-    (_,rest) <- getNewline rest
     return (Srt{ index=index,
                  start=start,
                  end=end,
-                 sub=BS.pack subString
+                 sub=subString
                }, rest)
-  
+      
+  readList string = 
+    let 
+      tailrec [] string =
+        case (readsPrec 0 :: ReadS Srt) string of -- if we can read any srt we fail
+          [] -> [] 
+          (srt,rest):_ -> tailrec (srt:[]) rest   -- otherwise we continue to look for other subs
+      tailrec list string = -- if we have read some srt
+        case (readsPrec 0 :: ReadS Srt) string of
+          [] -> [(reverse list,string)] -- we have find all the srt we could find
+          (srt,rest'):_ -> tailrec (srt:list) rest' -- we try to look for other subs
+    in tailrec [] string
+
+-- Instance of the Show class for SRT
 instance Show Srt where
   showsPrec _ srt = \s ->
     (show $ index srt)++"\r\n"++
     (showTime $ start srt)++" --> "++(showTime $ end srt)++"\r\n"++
-    (BS.unpack $ sub srt)++"\r\n"
-    
+    (sub srt)++"\r\n\r\n"
+  showList list string = (concat (map show list)) ++string
+
+
