@@ -41,7 +41,7 @@ getSeconds (x0:x1:rest) =
 getMilliSeconds :: ReadS Integer
 getMilliSeconds (m0:m1:m2:rest) =
   if all isNumber [m0,m1,m2]
-  then [(c2*10+c1*100+c0*100,rest)]
+  then [(c2+c1*10+c0*100,rest)]
   else []
   where [c2,c1,c0] = map read [m2:[],m1:[],m0:[]]
 

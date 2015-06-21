@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Srt (Srt) where
+module Srt (Srt,
+            shiftTime,
+            enlargeTime,
+            changeSub) where
 
 import Parsers 
 import Printer
@@ -13,8 +16,34 @@ data Srt = Srt {
   } deriving(Eq)
 
 
+-- shiftTime srt shift return the sub obtained
+-- by delaying the sub of shift milliseconds
+-- (the shift can also be negative)
+shiftTime :: Integer -> Srt -> Srt
+shiftTime shift srt = srt {
+  start = (start srt)+shift,
+  end = (end srt)+shift
+  }
+
+-- enlargeTime str grow return the sub obtained
+-- by enlarging the duration of the subtitle
+-- (grow can be negative)
+enlargeTime :: Integer -> Srt -> Srt
+enlargeTime grow srt = srt {
+  end = (end srt)+grow
+  }
+
+-- changeSub srt sub change the sub text
+changeSub :: String -> Srt -> Srt
+changeSub text srt = srt {
+  sub = text
+  }
 
 
+-- Instance of the Ord typeclass for Srt
+-- subs are ordered by their index
+instance Ord Srt where 
+  compare fst snd = compare (index fst) (index snd)
 
 -- Instance of the Read typeclass for Srt
 instance Read Srt where
